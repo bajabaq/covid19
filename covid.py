@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas
+import pycurl
 import sys
 import xlrd
 
@@ -181,8 +182,36 @@ def run_cases_model(confirmed_cases_df, population, geo_area, showplot):
 #read the covid data (maybe here check if new or not then get from github)
 #covid deaths has population as a column (confirmed does not)
 def get_covid(data, geo_area):
+    data_file = "time_series_covid19_"+data+"_US.csv"
+    
     #if old get the covid data from github
-    dfile = os.path.join(os.getcwd(),"time_series_covid19_"+data+"_US.csv")
+    today     = datetime.datetime.today()
+    yesterday = today - datetime.timedelta(days=1)
+
+    get_new_data = False
+    
+    if os.path.isfile(data_file):
+        mtime = datetime.datetime.fromtimestamp(os.path.getmtime(data_file))
+        if mtime < today: #new data should be available now
+            get_new_data = True
+        #endif
+    else:
+        get_new_data = True
+    #endif
+
+
+    if get_new_data == True:
+        data_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_"+data+"_US.csv"    
+        with open(data_file,'wb') as f:
+            c = pycurl.Curl()
+            c.setopt(c.URL,  data_url)
+            c.setopt(c.WRITEDATA, f)
+            c.perform()
+            c.close()
+        #endwith
+    #endif
+    
+    dfile = os.path.join(os.getcwd(),data_file)
     df = pandas.read_csv(dfile)
     
     if "," in geo_area:
@@ -309,7 +338,7 @@ def main():
             #endfor
             
             states   = ["Tennessee"]
-            oakridge = ["Anderson","Roane"]
+            oakridge = ["Anderson","Roane","Knox"]
             
             for s in states:
                 if s in geo_area:
